@@ -41,5 +41,5 @@ cat /proc/devices
 
 Make node to talk to a device
 ```sh
-mknode c /dev/{device-name} {major-number} {minor-number}
+mknod /dev/{device-name} c {major-number} {minor-number}
 ```
