@@ -71,6 +71,15 @@ static int __init drvled_init(void) {
         return result;
     }
 
+    cdev_init(&drvled_data.cdev, &drvled_fops);
+
+    result = cdev_add(&drvled_data.cdev, drvled_data.devnum, 1);
+    if(result) {
+        pr_err("%s: Char device registration failed!\n", DRIVER_NAME);
+        unregister_chrdev_region(drvled_data.devnum, 1);
+        return result;
+    }
+
     drvled_setled(LED_OFF);
 
     pr_info("%s: initalized.\n", DRIVER_NAME);

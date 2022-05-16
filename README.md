@@ -23,6 +23,11 @@ make modules_install
 
 ## Common commands
 
+Check kernel message log.
+```sh
+dmesg
+```
+
 Will output a dependency list suitable for the modprobe utility.
 
 ```sh
