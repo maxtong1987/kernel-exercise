@@ -26,7 +26,7 @@ make modules_install
 Will output a dependency list suitable for the modprobe utility.
 
 ```sh
-demod -A
+depmod -A
 ```
 
 Load module
