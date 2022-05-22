@@ -39,6 +39,11 @@ Load module
 modprobe {your-module-name}
 ```
 
+Unload module
+```sh
+modprobe -r {your-module-name}
+```
+
 Check module major numbers
 ```sh
 cat /proc/devices
@@ -47,4 +52,9 @@ cat /proc/devices
 Make node to talk to a device
 ```sh
 mknod /dev/{device-name} c {major-number} {minor-number}
+```
+
+Check iomem mapping
+```sh
+cat /proc/iomem
 ```
