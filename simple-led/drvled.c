@@ -1,103 +1,125 @@
 #include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/leds.h>
-#include <linux/slab.h>
-#include <linux/gpio.h>
-#include <linux/gpio/consumer.h>
+#include <linux/of.h>
+#include <linux/platform_device.h>
+#include <linux/pwm.h>
 
-#define DRIVER_NAME "drvled"
-
-#define LED_OFF 0
-#define LED_ON 1
-
-#define GPIO_NUM 9
-
-struct drvled_data_st
+struct fake_chip
 {
-    struct gpio_desc *desc;
-    struct led_classdev led_cdev;
+    struct pwm_chip chip;
+    int foo;
+    int bar;
+    /* put the client structure here (SPI/I2C) */
 };
 
-static struct drvled_data_st *drvled_data;
-
-static void drvled_setled(unsigned int status)
+static inline struct fake_chip *to_fake_chip(struct pwm_chip *chip)
 {
-    if (status == LED_ON)
-    {
-        gpiod_set_value(drvled_data->desc, 1);
-    }
-    else
-    {
-        gpiod_set_value(drvled_data->desc, 0);
-    }
+    return container_of(chip, struct fake_chip, chip);
 }
 
-static void drvled_change_state(struct led_classdev *led_cdev, enum led_brightness brightness)
+static int fake_pwm_request(struct pwm_chip *chip, struct pwm_device *pwm)
 {
-    if (brightness)
-    {
-        drvled_setled(LED_ON);
-    }
-    else
-    {
-        drvled_setled(LED_OFF);
-    }
+    /*
+    * One may need to do some initialization when a PWM channel
+    * of the controller is requested. This should be done here.
+    *
+    * One may do something like
+    *
+    prepare_pwm_device(struct pwm_chip *chip, pwm->hwpwm);
+    */
+    return 0;
 }
 
-static int __init drvled_init(void)
+static int fake_pwm_config(struct pwm_chip *chip,
+                           struct pwm_device *pwm,
+                           int duty_ns, int period_ns)
 {
-    int result = 0;
-
-    drvled_data = kzalloc(sizeof(*drvled_data), GFP_KERNEL);
-    if (!drvled_data)
-    {
-        result = -ENOMEM;
-        goto ret_err_kzalloc;
-    }
-
-    result = gpio_request(GPIO_NUM, DRIVER_NAME);
-    if (result)
-    {
-        pr_err("%s: Error requesting GPIO\n", DRIVER_NAME);
-        goto ret_err_gpio_request;
-    }
-
-    drvled_data->desc = gpio_to_desc(GPIO_NUM);
-
-    drvled_data->led_cdev.name = "ipe:red:user";
-    drvled_data->led_cdev.brightness_set = drvled_change_state;
-
-    result = led_classdev_register(NULL, &drvled_data->led_cdev);
-    if (result)
-    {
-        pr_err("%s: Error registering led\n", DRIVER_NAME);
-        goto ret_err_led_classdev_register;
-    }
-
-    gpiod_direction_output(drvled_data->desc, 0);
-
-    pr_info("%s: initialized.\n", DRIVER_NAME);
-    goto ret_ok;
-
-ret_err_led_classdev_register:
-    gpio_free(GPIO_NUM);
-ret_err_gpio_request:
-    kfree(drvled_data);
-ret_err_kzalloc:
-ret_ok:
-    return result;
+    /*
+    * In this function, one ne can do something like:
+    *
+    struct fake_chip *priv = to_fake_chip(chip);
+    *
+    *
+    return send_command_to_set_config(priv,
+    *
+    duty_ns, period_ns);
+    */
+    return 0;
 }
 
-static void __exit drvled_exit(void)
+static int fake_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
 {
-    led_classdev_unregister(&drvled_data->led_cdev);
-    gpio_free(GPIO_NUM);
-    kfree(drvled_data);
-    pr_info("%s: exiting.\n", DRIVER_NAME);
+    /*
+     * In this function, one ne can do something like:
+     * struct fake_chip *priv = to_fake_chip(chip);
+     *
+     * return foo_chip_set_pwm_enable(priv, pwm->hwpwm, true);
+     */
+    pr_info("Somebody enabled PWM device number %d of this chip",
+            pwm->hwpwm);
+    return 0;
 }
 
-module_init(drvled_init);
-module_exit(drvled_exit);
+static void fake_pwm_disable(struct pwm_chip *chip,
+                             struct pwm_device *pwm)
+{
+    /*
+     * In this function, one ne can do something like:
+     * struct fake_chip *priv = to_fake_chip(chip);
+     *
+     * return foo_chip_set_pwm_enable(priv, pwm->hwpwm, false);
+     */
+    pr_info("Somebody disabled PWM device number %d of this chip",
+            pwm->hwpwm);
+}
+
+static const struct pwm_ops fake_pwm_ops = {
+    .request = fake_pwm_request,
+    .config = fake_pwm_config,
+    .enable = fake_pwm_enable,
+    .disable = fake_pwm_disable,
+    .owner = THIS_MODULE,
+};
+
+static int fake_pwm_probe(struct platform_device *pdev)
+{
+    struct fake_chip *priv;
+    priv = devm_kzalloc(&pdev->dev, sizeof(*priv), GFP_KERNEL);
+    if (!priv)
+        return -ENOMEM;
+    priv->chip.ops = &fake_pwm_ops;
+    priv->chip.dev = &pdev->dev;
+    priv->chip.base = -1;
+    /* Dynamic base */
+    priv->chip.npwm = 3;
+    /* 3 channel controller */
+    platform_set_drvdata(pdev, priv);
+    return pwmchip_add(&priv->chip);
+}
+
+static int fake_pwm_remove(struct platform_device *pdev)
+{
+    struct fake_chip *priv = platform_get_drvdata(pdev);
+    pwmchip_remove(&priv->chip); // why void not int ??
+    return 0;
+}
+
+static const struct of_device_id fake_pwm_dt_ids[] = {
+    {
+        .compatible = "packt,fake-pwm",
+    },
+    {}};
+
+MODULE_DEVICE_TABLE(of, fake_pwm_dt_ids);
+static struct platform_driver fake_pwm_driver = {
+    .driver = {
+        .name = KBUILD_MODNAME,
+        .owner = THIS_MODULE,
+        .of_match_table = of_match_ptr(fake_pwm_dt_ids),
+    },
+    .probe = fake_pwm_probe,
+    .remove = fake_pwm_remove,
+};
+module_platform_driver(fake_pwm_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Max Tong <maxtong198776@gmail.com>");
