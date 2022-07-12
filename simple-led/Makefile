@@ -1,6 +1,6 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 
-obj-m := drvled.o
+obj-m := drvled_sysfs.o
 
 all default: modules
 install: modules_install
