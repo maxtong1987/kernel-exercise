@@ -12,7 +12,7 @@ import Adafruit_PCA9685
 
 # Uncomment to enable debug output.
 #import logging
-#logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 # Initialise the PCA9685 using the default address (0x40).
 pwm = Adafruit_PCA9685.PCA9685()
@@ -21,7 +21,7 @@ pwm.set_pwm_freq(1000)
 
 R_CHANNEL = 0
 G_CHANNEL = 1
-B_CHANNEL = 2
+B_CHANNEL = 3
 
 angle = 0
 AMP = 4095
@@ -41,5 +41,5 @@ while True:
     pwm.set_pwm(R_CHANNEL, max(0, R), 4095)
     pwm.set_pwm(G_CHANNEL, max(0, G), 4095)
     pwm.set_pwm(B_CHANNEL, max(0, B), 4095)
-    
+
     time.sleep(0.01)
