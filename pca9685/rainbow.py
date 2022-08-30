@@ -1,32 +1,41 @@
-# Simple demo of of the PCA9685 PWM servo/LED controller library.
-# This will move channel 0 from min to max position repeatedly.
-# Author: Tony DiCola
-# License: Public Domain
-from __future__ import division
-import time
+from sys import argv
+from os import curdir, sep
+from urllib.parse import urlparse, parse_qs
+from board import SCL, SDA
+import busio
 import math
+import time
 
 # Import the PCA9685 module.
-import Adafruit_PCA9685
+from adafruit_pca9685 import PCA9685
 
+# Create the I2C bus interface.
+i2c_bus = busio.I2C(SCL, SDA)
 
-# Uncomment to enable debug output.
-#import logging
-# logging.basicConfig(level=logging.DEBUG)
+# Create a simple PCA9685 class instance.
+pca = PCA9685(i2c_bus)
 
-# Initialise the PCA9685 using the default address (0x40).
-pwm = Adafruit_PCA9685.PCA9685()
-
-pwm.set_pwm_freq(1000)
+# Set the PWM frequency to 1000hz.
+pca.frequency = 60
 
 R_CHANNEL = 0
 G_CHANNEL = 1
 B_CHANNEL = 3
+AMP = 0xffff
 
 angle = 0
-AMP = 4095
-
 PI_2 = math.pi * 2
+
+
+def clamp(v, minn, maxn):
+    return max(min(v, maxn), minn)
+
+
+def set_color(r, g, b):
+    pca.channels[R_CHANNEL].duty_cycle = clamp(AMP - r, 0, AMP)
+    pca.channels[G_CHANNEL].duty_cycle = clamp(AMP - g, 0, AMP)
+    pca.channels[B_CHANNEL].duty_cycle = clamp(AMP - b, 0, AMP)
+
 
 while True:
     if angle > PI_2:
@@ -34,12 +43,10 @@ while True:
     else:
         angle += 0.02
 
-    R = int(math.sin(angle) * AMP)
-    G = int(math.sin(angle + 1 / 3 * PI_2) * AMP)
-    B = int(math.sin(angle + 2 / 3 * PI_2) * AMP)
+    r = int(math.sin(angle) * AMP)
+    g = int(math.sin(angle + 1 / 3 * PI_2) * AMP)
+    b = int(math.sin(angle + 2 / 3 * PI_2) * AMP)
 
-    pwm.set_pwm(R_CHANNEL, max(0, R), 4095)
-    pwm.set_pwm(G_CHANNEL, max(0, G), 4095)
-    pwm.set_pwm(B_CHANNEL, max(0, B), 4095)
+    set_color(r, g, b)
 
     time.sleep(0.01)

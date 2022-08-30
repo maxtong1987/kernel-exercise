@@ -1,28 +1,27 @@
-# Simple demo of of the PCA9685 PWM servo/LED controller library.
-# This will move channel 0 from min to max position repeatedly.
-# Author: Tony DiCola
-# License: Public Domain
-from __future__ import division
-import math
-from http.server import BaseHTTPRequestHandler, HTTPServer
-import logging
-from urllib.parse import urlparse, parse_qs
-from os import curdir, sep
 from sys import argv
+from os import curdir, sep
+from urllib.parse import urlparse, parse_qs
+import logging
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from board import SCL, SDA
+import busio
 
 # Import the PCA9685 module.
-import Adafruit_PCA9685
+from adafruit_pca9685 import PCA9685
 
-# Initialise the PCA9685 using the default address (0x40).
-pwm = Adafruit_PCA9685.PCA9685()
+# Create the I2C bus interface.
+i2c_bus = busio.I2C(SCL, SDA)
 
-pwm.set_pwm_freq(1000)
+# Create a simple PCA9685 class instance.
+pca = PCA9685(i2c_bus)
+
+# Set the PWM frequency to 1000hz.
+pca.frequency = 60
+
 
 R_CHANNEL = 0
 G_CHANNEL = 1
 B_CHANNEL = 2
-END_TICK = 4095
-SCALE = 4096.0 / 256
 
 
 def set_color2(num):
@@ -33,15 +32,11 @@ def set_color2(num):
     set_color(r, g, b)
 
 
-def to_brightness(color):
-    return max(math.floor(SCALE * color), 0)
-
-
 def set_color(r, g, b):
     print("RGB:", r, g, b)
-    pwm.set_pwm(R_CHANNEL, to_brightness(r), END_TICK)
-    pwm.set_pwm(G_CHANNEL, to_brightness(g), END_TICK)
-    pwm.set_pwm(B_CHANNEL, to_brightness(b), END_TICK)
+    pca.channels[R_CHANNEL].duty_cycle = 0xffff - (r << 8)
+    pca.channels[G_CHANNEL].duty_cycle = 0xffff - (g << 8)
+    pca.channels[B_CHANNEL].duty_cycle = 0xffff - (b << 8)
 
 
 class MyServer(BaseHTTPRequestHandler):
